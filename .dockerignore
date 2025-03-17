@@ -1,0 +1,49 @@
+# Ignore Python bytecode files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual environments
+venv/
+env/
+*.egg-info/
+
+# Ignore log files
+*.log
+
+# Ignore SQLite database (if using SQLite in development)
+db.sqlite3
+
+# Ignore media files
+media/
+
+# Ignore IDE/editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Ignore the .env file containing sensitive data
+.env
+
+# Ignore the directory where your compiled binaries or other build artifacts are stored
+build/
+dist/
+
+# Ignore Terraform files
+*.tfvars
+*.tf
+*.tfstate
+terraform.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Ignore Docker files
+Dockerfile
+
+# Igonre the docker build automation script in ps1
+docker-ecr-deploy.ps1
+
+# Igonre staticfiles folder
+staticfiles/
