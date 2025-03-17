@@ -35,12 +35,14 @@ else:
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne', # Should stay at top
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'App',
 ]
 
@@ -73,8 +75,23 @@ TEMPLATES = [
     },
 ]
 
+ASGI_APPLICATION = 'IrisVoiceAI.asgi.application'
+
 WSGI_APPLICATION = 'IrisVoiceAI.wsgi.application'
 
+# Channels Layer
+
+# Configure channel layers
+REDIS_URL = config('REDIS_URL') if not DEBUG else 'redis://localhost:6379'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [REDIS_URL],
+        },
+    }
+}
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
