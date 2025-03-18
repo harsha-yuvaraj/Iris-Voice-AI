@@ -1,6 +1,11 @@
-{% extends "base.html" %}
+{% extends "base.html" %} 
 
 {% block content %}
-    <h1>Welcome to Iris Voice AI!</h1>
-    <p class="lead">Iris Voice AI is a voice assistant that can help you with your daily tasks.</p>
+<h1 class="electrolize-regular" id="title">
+  <span>Iris Voice AI</span>
+</h1>
+
+<div class="container d-flex justify-content-center align-items-center vh-100">
+    <button id="voiceControl" type="button" class="btn btn-primary btn-lg">Start Recording</button>
+</div>
 {% endblock %}
