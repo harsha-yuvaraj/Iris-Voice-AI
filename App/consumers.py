@@ -8,7 +8,7 @@ class VoiceConsumer(AsyncWebsocketConsumer):
         print("WebSocket Connected")
         self.recording = False           # True if actively recording
         self.user_stop = False           # True if user manually stops recording
-        self.deepgram_session = aiohttp.ClientSession()
+        self.aiohttp_session = aiohttp.ClientSession()
         self.deepgram_ws = None
 
     async def receive(self, text_data=None, bytes_data=None):
@@ -20,7 +20,7 @@ class VoiceConsumer(AsyncWebsocketConsumer):
                 self.recording = True
                 self.user_stop = False    # Reset manual stop flag
                 print("Recording started...")
-                self.deepgram_ws = await self.deepgram_session.ws_connect(
+                self.deepgram_ws = await self.aiohttp_session.ws_connect(
                     f"{config('DEEPGRAM_WS_URL')}?model={config('DEEPGRAM_STT_MODEL')}"
                     f"&smart_format=true&interim_results=false&endpointing={config('DEEPGRAM_STT_ENDPOINTING')}",
                     headers={"Authorization": f"Token {config('DEEPGRAM_API_KEY')}"}
@@ -51,14 +51,22 @@ class VoiceConsumer(AsyncWebsocketConsumer):
             async for message in self.deepgram_ws:
                 if message.type == aiohttp.WSMsgType.TEXT:
                     response = json.loads(message.data)
-                    alternative = response.get("channel", {}).get("alternatives", [{}])[0]
-                    transcript = alternative.get("transcript", "").strip()
-
+                    transcript = response.get("channel", {}).get("alternatives", [{}])[0].get("transcript", "").strip()
+                    
                     if transcript:
-                        # Non-empty final transcript: send it and break
+                        self.recording = False
+
+                        # Non-empty final transcript
+                        await self.send(text_data=json.dumps({
+                            "command":"speech_end",
+                            "transcription": transcript
+                        }))
+
+                        gpt_response = await self.get_response(transcript)
+                        
                         await self.send(text_data=json.dumps({
                             "command": "final",
-                            "transcription": transcript,
+                            "response": gpt_response,
                             "auto_restart": not self.user_stop
                         }))
                         break
@@ -75,14 +83,47 @@ class VoiceConsumer(AsyncWebsocketConsumer):
             print("Deepgram WS error:", e)
 
         finally:
+            self.recording = False
             if self.deepgram_ws:
                 await self.deepgram_ws.close()
             self.deepgram_ws = None
+            print("Recording Stopped.")
+
+    async def get_response(self, user_query):
+        headers = {
+            "Authorization": f"Bearer {config('OPENAI_API_KEY')}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": config('OPENAI_MODEL'),
+            "messages": [
+                {
+                    "role": "system", 
+                    "content": "Act and generate response like the Daisy O2 time-wasting bot. Response should not exceed 30 words."
+                },
+                {
+                    "role": "user", 
+                    "content": user_query
+                }
+            ],
+            "max_tokens": 40,
+            "temperature": 0.8
+        }
+
+        try:
+            async with self.aiohttp_session.post(config('OPENAI_API_ENDPOINT'), json=payload, headers=headers) as response:
+                response_json = await response.json()
+                return response_json.get("choices", [{}])[0].get("message", {}).get("content", "I couldn't hear you well. Mind repeating?")
+        except Exception as e:
+            print("GPT API error:", e)
+            return "I'm having trouble responding right now."
+
 
     async def disconnect(self, close_code):
         print("WebSocket Disconnected")
         if self.deepgram_ws:
             await self.deepgram_ws.close()
-        if self.deepgram_session:
-            await self.deepgram_session.close()
-        self.deepgram_ws, self.deepgram_session = None, None
+        if self.aiohttp_session:
+            await self.aiohttp_session.close()
+        self.deepgram_ws, self.aiohttp_session = None, None

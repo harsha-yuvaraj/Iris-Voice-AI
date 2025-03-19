@@ -15,18 +15,21 @@ document.addEventListener("DOMContentLoaded", function () {
     socket.onmessage = function (event) {
         const data = JSON.parse(event.data);
         if (data.command === "final") {
-            console.log("Final transcription:", data.transcription);
+            console.log("Response:", data.response);
             if (data.auto_restart) {
-                stopRecording();
+                stopRecording(false); // Stop recording without sending stop command
                 setTimeout(() => {
                     startRecording();
                 }, 500);
             } else {
                 stopRecording();
             }
+        } else if (data.command === "speech_end") {
+            console.log("Speech end detected:", data.transcription);
+            stopRecording(false); 
         } else if (data.command === "auto_stop") {
             console.log("Auto-stop triggered due to inactivity.");
-            stopRecording();
+            stopRecording(false);
         } else {
             console.log("Message from server:", data);
         }
@@ -63,10 +66,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
     
-    function stopRecording() {
-        if (!isRecording) return;
+    function stopRecording(notify=true) {
+        if(!isRecording) return;
+
         isRecording = false;
-        socket.send(JSON.stringify({ command: "stop" }));
+
+        if(notify)
+            socket.send(JSON.stringify({ command: "stop" }));
+
         if (mediaRecorder) {
             mediaRecorder.stop();
             voiceButton.textContent = "Start Recording";
