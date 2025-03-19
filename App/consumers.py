@@ -1,5 +1,5 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
-import asyncio, aiohttp, json, time
+import asyncio, aiohttp, json, time, struct
 from decouple import config
 
 class VoiceConsumer(AsyncWebsocketConsumer):
@@ -58,17 +58,22 @@ class VoiceConsumer(AsyncWebsocketConsumer):
 
                         # Non-empty final transcript
                         await self.send(text_data=json.dumps({
-                            "command":"speech_end",
+                            "command":"user_speech_end",
                             "transcription": transcript
                         }))
 
                         gpt_response = await self.get_response(transcript)
                         
+                        # Convert OpenAI response to speech via Deepgram TTS and stream audio.
+                        asyncio.create_task(self.text_to_speech(gpt_response))
+                      
+                        """
                         await self.send(text_data=json.dumps({
                             "command": "final",
                             "response": gpt_response,
                             "auto_restart": not self.user_stop
-                        }))
+                        }))"
+                        """
                         break
                     else:
                         # Final transcript is empty - indicating speech inactivity
@@ -118,8 +123,34 @@ class VoiceConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             print("GPT API error:", e)
             return "I'm having trouble responding right now."
+        
+    async def text_to_speech(self, text):
 
+        TTS_URL = f"{config('DEEPGRAM_TTS_API_ENDPOINT')}?model={config('DEEPGRAM_TTS_MODEL')}&encoding=mp3"
+        headers = {
+            "Authorization": f"Token {config('DEEPGRAM_API_KEY')}",
+            "Content-Type": "application/json"
+        }
+        payload = { "text": text }
 
+        try:
+           async with self.aiohttp_session.post(TTS_URL, json=payload, headers=headers) as response:
+                async for chunk in response.content.iter_chunked(1024):
+                    if chunk:
+                        await self.send(bytes_data=chunk)
+
+        
+        except Exception as e:
+            print('Deepgram TTS error: ', e)
+        finally:
+            await self.send(text_data=json.dumps({
+                "command": "final",
+                "response": text,
+                "auto_restart": not self.user_stop
+            }))
+            print("Audio response streaming done...")
+
+    
     async def disconnect(self, close_code):
         print("WebSocket Disconnected")
         if self.deepgram_ws:

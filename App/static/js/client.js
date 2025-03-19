@@ -5,33 +5,65 @@ document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let isRecording = false;
     const voiceButton = document.getElementById("voiceControl");
+    const audioPlayer = document.getElementById("audioPlayer");  // Reference to the audio element
+    
+
+    let sourceBuffer = [];
     
     const socket = new WebSocket(wsUrl);
+    socket.binaryType = "arraybuffer"; // Expect binary messages for TTS audio.
     
     socket.onopen = function () {
         console.log("WebSocket connection established.");
     };
     
-    socket.onmessage = function (event) {
-        const data = JSON.parse(event.data);
-        if (data.command === "final") {
-            console.log("Response:", data.response);
-            if (data.auto_restart) {
-                stopRecording(false); // Stop recording without sending stop command
-                setTimeout(() => {
-                    startRecording();
-                }, 500);
+    socket.onmessage = async function (event) {
+        if (typeof event.data === "string") {
+            const data = JSON.parse(event.data);
+            if (data.command === "final") {
+                console.log("Response:", data.response);
+                const mp3Blob = new Blob(sourceBuffer, { type: 'audio/mpeg' });
+                const mp3Url = URL.createObjectURL(mp3Blob);
+            
+                // Set the audio source and play
+                audioPlayer.src = mp3Url;
+                audioPlayer.onended = () => {
+                    sourceBuffer = [];
+                    
+                    if (data.auto_restart) {
+                        setTimeout(() => {
+                            startRecording();
+                        }, 500);
+                    }
+                };
+    
+                /*
+                if (data.auto_restart) {
+                    stopRecording(false); // Stop recording without sending stop command
+                    setTimeout(() => {
+                        startRecording();
+                    }, 500);
+                } else {
+                    stopRecording(false);
+                }
+                */
+            } else if (data.command === "user_speech_end") {
+                console.log("Speech end detected:", data.transcription);
+                stopRecording(false); 
+                voiceButton.textContent = "Responding..."
+            } else if (data.command === "auto_stop") {
+                console.log("Auto-stop triggered due to inactivity.");
+                stopRecording(false);
             } else {
-                stopRecording();
+                console.log("Message from server:", data);
             }
-        } else if (data.command === "speech_end") {
-            console.log("Speech end detected:", data.transcription);
-            stopRecording(false); 
-        } else if (data.command === "auto_stop") {
-            console.log("Auto-stop triggered due to inactivity.");
-            stopRecording(false);
-        } else {
-            console.log("Message from server:", data);
+        } else {       
+            if (event.data instanceof ArrayBuffer) {
+                sourceBuffer.push(event.data);
+              } else {
+                console.log("Received data is not an ArrayBuffer");
+              }
+            
         }
     };
     
@@ -65,7 +97,8 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error("Error accessing microphone:", error);
         }
     }
-    
+
+
     function stopRecording(notify=true) {
         if(!isRecording) return;
 
