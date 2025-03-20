@@ -1,5 +1,6 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import asyncio, aiohttp, json, time, uuid
+from . import conversation_context
 from decouple import config
 
 class VoiceConsumer(AsyncWebsocketConsumer):
@@ -64,7 +65,7 @@ class VoiceConsumer(AsyncWebsocketConsumer):
                             "command":"user_speech_end",
                             "transcription": transcript
                         }))
-
+                        
                         gpt_response = await self.get_response(transcript)
                         
                         # Convert OpenAI response to speech via Deepgram TTS and stream audio.
@@ -94,27 +95,31 @@ class VoiceConsumer(AsyncWebsocketConsumer):
             "Authorization": f"Bearer {config('OPENAI_API_KEY')}",
             "Content-Type": "application/json"
         }
+        
+        current_context = await conversation_context.update_conversation_context(key=self.scope["session"]["session_id"], role="user", msg=user_query)
 
+        prompt = [
+            {
+             "role": "developer", 
+             "content": "Act and generate response like the Daisy O2 time-wasting bot. Assume your gender as female and human! Response should not exceed 30 words."
+            }
+        ]
+
+        prompt.extend(current_context)
+        
         payload = {
             "model": config('OPENAI_MODEL'),
-            "messages": [
-                {
-                    "role": "system", 
-                    "content": "Act and generate response like the Daisy O2 time-wasting bot. Response should not exceed 30 words."
-                },
-                {
-                    "role": "user", 
-                    "content": user_query
-                }
-            ],
-            "max_tokens": 40,
-            "temperature": 0.8
+            "messages": prompt,
+            "max_tokens": 70,
+            "temperature": 0.5
         }
 
         try:
             async with self.aiohttp_session.post(config('OPENAI_API_ENDPOINT'), json=payload, headers=headers) as response:
                 response_json = await response.json()
-                return response_json.get("choices", [{}])[0].get("message", {}).get("content", "I couldn't hear you well. Mind repeating?")
+                reply = response_json.get("choices", [{}])[0].get("message", {}).get("content", "There appears to be an error. Please try again later.")
+                await conversation_context.update_conversation_context(key=self.scope["session"]["session_id"], role="assistant", msg=reply)
+                return reply
         except Exception as e:
             print("GPT API error:", e)
             return "I'm having trouble responding right now."
@@ -152,5 +157,7 @@ class VoiceConsumer(AsyncWebsocketConsumer):
             await self.deepgram_ws.close()
         if self.aiohttp_session:
             await self.aiohttp_session.close()
+
+        await conversation_context.remove_conversation_context(key=self.scope["session"]["session_id"])
         self.deepgram_ws, self.aiohttp_session = None, None
         
