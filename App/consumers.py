@@ -1,15 +1,18 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
-import asyncio, aiohttp, json, time, struct
+import asyncio, aiohttp, json, time, uuid
 from decouple import config
 
 class VoiceConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        await self.accept()
-        print("WebSocket Connected")
+        
+        self.scope["session"]["session_id"] = str(uuid.uuid4())
         self.recording = False           # True if actively recording
         self.user_stop = False           # True if user manually stops recording
         self.aiohttp_session = aiohttp.ClientSession()
         self.deepgram_ws = None
+
+        await self.accept()
+        print("WebSocket Connected: ", self.scope["session"]["session_id"])
 
     async def receive(self, text_data=None, bytes_data=None):
         if text_data:
@@ -66,14 +69,6 @@ class VoiceConsumer(AsyncWebsocketConsumer):
                         
                         # Convert OpenAI response to speech via Deepgram TTS and stream audio.
                         asyncio.create_task(self.text_to_speech(gpt_response))
-                      
-                        """
-                        await self.send(text_data=json.dumps({
-                            "command": "final",
-                            "response": gpt_response,
-                            "auto_restart": not self.user_stop
-                        }))"
-                        """
                         break
                     else:
                         # Final transcript is empty - indicating speech inactivity
@@ -152,9 +147,10 @@ class VoiceConsumer(AsyncWebsocketConsumer):
 
     
     async def disconnect(self, close_code):
-        print("WebSocket Disconnected")
+        print("WebSocket Disconnected", self.scope["session"]["session_id"])
         if self.deepgram_ws:
             await self.deepgram_ws.close()
         if self.aiohttp_session:
             await self.aiohttp_session.close()
         self.deepgram_ws, self.aiohttp_session = None, None
+        
