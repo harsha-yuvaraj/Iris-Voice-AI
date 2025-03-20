@@ -79,10 +79,8 @@ ASGI_APPLICATION = 'IrisVoiceAI.asgi.application'
 
 WSGI_APPLICATION = 'IrisVoiceAI.wsgi.application'
 
-# Channels Layer
-
 # Configure channel layers
-REDIS_URL = config('REDIS_URL') if not DEBUG else 'redis://localhost:6379'
+REDIS_URL = config('REDIS_URL') if not DEBUG else 'redis://localhost:6379' # 'redis://redis:6379'
 
 CHANNEL_LAYERS = {
     "default": {
@@ -92,6 +90,22 @@ CHANNEL_LAYERS = {
         },
     }
 }
+
+# Redis Cache
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,  
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
+}
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
