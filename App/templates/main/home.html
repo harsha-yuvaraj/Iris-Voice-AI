@@ -1,14 +1,21 @@
 {% extends "base.html" %} 
 
 {% block content %}
-<h1 class="electrolize-regular" id="title">
-  <span>Iris Voice AI</span>
-</h1>
 
-<div class="container d-flex justify-content-center align-items-center vh-100">
-    <button id="voiceControl" type="button" class="btn btn-primary btn-lg">Start Recording</button>
-    <audio id="audioPlayer" autoplay style="display: none;">
+
+    <div class="chat-container" id="chatBox">
+         <!-- Conversations will be added dynamically -->
+    </div>
+
+    <div class="d-flex justify-content-center align-items-center">
+      <button id="voiceControl" type="button" class="btn btn-success btn-lg align-center">
+        <i class="bi bi-mic-fill"></i>
+        <span>Let's Chat!</span>
+      </button>
+    </div>
+
+    <audio id="audioPlayer" style="display: none;">
       Your browser does not support the audio element.
     </audio>
-</div>
+
 {% endblock %}

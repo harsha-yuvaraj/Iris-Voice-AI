@@ -21,8 +21,7 @@ class WebVoiceConsumer(AsyncWebsocketConsumer):
     
             if command == "start":
                 self.recording = True
-                self.user_stop = False    # Reset manual stop flag
-                print("Recording started...")
+                self.user_stop = False    
                 self.deepgram_ws = await self.aiohttp_session.ws_connect(
                     f"{config('DEEPGRAM_WS_URL')}?model={config('DEEPGRAM_STT_MODEL')}"
                     f"&smart_format=true&interim_results=false&endpointing={config('DEEPGRAM_STT_ENDPOINTING')}",
@@ -36,7 +35,6 @@ class WebVoiceConsumer(AsyncWebsocketConsumer):
                 if self.deepgram_ws:
                     await self.deepgram_ws.close()
                 self.deepgram_ws = None
-                print("Recording manually stopped.")
     
         elif bytes_data and self.recording and self.deepgram_ws:
             await self.deepgram_ws.send_bytes(bytes_data)
@@ -87,7 +85,6 @@ class WebVoiceConsumer(AsyncWebsocketConsumer):
             if self.deepgram_ws:
                 await self.deepgram_ws.close()
             self.deepgram_ws = None
-            print("Recording Stopped.")
 
     async def text_to_speech(self, text):
 
@@ -113,7 +110,6 @@ class WebVoiceConsumer(AsyncWebsocketConsumer):
                 "response": text,
                 "auto_restart": not self.user_stop
             }))
-            print("Audio response streaming done...")
 
     
     async def disconnect(self, close_code):
@@ -220,11 +216,10 @@ class TwilioVoiceConsumer(AsyncWebsocketConsumer):
                         }))
 
            await self.send(text_data=json.dumps({"event": "stop"}))
-           
+
         except Exception as e:
             print('Twilio Deepgram TTS error: ', e)
-        finally:
-            print("Twilio Audio response streaming done...")
+
 
     async def disconnect(self, close_code):
         print("Twilio WS disconnected: ", self.scope["session"]["session_id"])

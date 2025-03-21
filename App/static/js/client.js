@@ -7,12 +7,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const chunkQueue = [];
     let isAppending = false;
     let receivedFinal = false; // Flag to check final command received
+    let listen = true;
 
     const protocol = (window.location.protocol === "https:") ? "wss://" : "ws://";
     const wsUrl = `${protocol}${window.location.host}/ws/voice/`;
 
     const voiceButton = document.getElementById("voiceControl");
     const audioPlayer = document.getElementById("audioPlayer");
+    const chatBox = document.getElementById("chatBox");
 
     // Establish WebSocket connection and set binary type
     const socket = new WebSocket(wsUrl);
@@ -70,7 +72,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const data = JSON.parse(event.data);
 
             if (data.command === "final") {
-                console.log("Final command received, streaming done. \n" + data.response);
+                addMessage(data.response, true)
                 receivedFinal = true;
                 // End the stream once SourceBuffer is finished updating
                 if (!sourceBuffer.updating && chunkQueue.length === 0) {
@@ -82,28 +84,28 @@ document.addEventListener("DOMContentLoaded", function () {
                             clearInterval(checkBuffer);
                             mediaSource.endOfStream();
                         }
-                    }, 100);
+                    }, 50);
                 }
 
                 // Wait for audio playback to complete before resetting
                 audioPlayer.onended = () => {
-                    console.log("Speech Audio playback complete. Resetting.");
+                    console.log("AI Speech complete.");
                     resetMediaSource();
-                    
+                    listen = true;
                     if (data.auto_restart) {
                         startRecording();
                     }
                 };
             } else if (data.command === "user_speech_end") {
-                console.log("Speech end detected:", data.transcription);
+                addMessage(data.transcription)
                 stopRecording(false);
-                voiceButton.textContent = "Responding...";
+                voiceButton.querySelector("span").textContent = "Responding...";
+                listen = false;
             } else if (data.command === "auto_stop") {
                 console.log("Auto-stop triggered due to inactivity.");
                 stopRecording(false);
-            } else {
-                console.log("Message from server:", data);
-            }
+                resetVoiceButton();
+            } 
         } else {
             // For binary data (audio chunks), enqueue and attempt to append
             if (event.data instanceof ArrayBuffer) {
@@ -112,7 +114,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     appendFromQueue();
                 }
             } else {
-                console.log("Received data is not an ArrayBuffer");
+                alert('Audio playback error - Received data is not an ArrayBuffer!')
             }
         }
     };
@@ -153,10 +155,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             };
             mediaRecorder.start(250); // Send small audio chunks
-            voiceButton.textContent = "Recording...";
-            console.log("Recording started...");
+            voiceButton.querySelector("span").textContent = "I'm Listening...";
+            voiceButton.classList.remove("btn-success");
+            voiceButton.classList.add("btn-danger")
+            console.log("Listening...");
         } catch (error) {
-            alert("Error accessing microphone:", error);
+            alert("Please enable access to your microphone:", error);
         }
     }
 
@@ -165,19 +169,45 @@ document.addEventListener("DOMContentLoaded", function () {
         isRecording = false;
         if (notify) {
             socket.send(JSON.stringify({ command: "stop" }));
+            resetVoiceButton();
         }
         if (mediaRecorder) {
             mediaRecorder.stop();
-            voiceButton.textContent = "Start Recording";
-            console.log("Recording stopped.");
+            console.log("Paused Listening...");
         }
     }
 
+    function resetVoiceButton(){
+        voiceButton.querySelector("span").textContent = "Let's Chat!";
+        voiceButton.classList.remove("btn-danger");
+        voiceButton.classList.add("btn-success")
+    }
+
     voiceButton.addEventListener("click", function () {
-        if (!isRecording) {
-            startRecording();
-        } else {
-            stopRecording();
+        if (listen) {
+          if (!isRecording) {
+             startRecording();
+          } else {
+             stopRecording();
+          }
         }
     });
+
+    function addMessage(text, isSenderAI=false) {
+        const messageDiv = document.createElement("div");
+        messageDiv.classList.add("message", !isSenderAI ? "user-message" : "ai-message");
+
+        if (isSenderAI){
+        const userLabel = document.createElement("span");
+        userLabel.classList.add("user-label");
+        userLabel.textContent = "Iris:";
+        messageDiv.appendChild(userLabel);
+        }
+
+        const textNode = document.createTextNode(text);
+        messageDiv.appendChild(textNode);
+
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to latest message
+    }
 });
