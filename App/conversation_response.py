@@ -1,13 +1,21 @@
 from . import conversation_context
 from decouple import config
 
-async def get_response(aiohttp_session, user_query, user_session):
+async def get_response(aiohttp_session, user_query, user_session, no_context=False):
     headers = {
         "Authorization": f"Bearer {config('OPENAI_API_KEY')}",
         "Content-Type": "application/json"
     }
     
-    current_context = await conversation_context.update_conversation_context(key=user_session, role="user", msg=user_query)
+    current_context = None
+    if not no_context:
+        current_context = await conversation_context.update_conversation_context(key=user_session, role="user", msg=user_query)
+    else:
+        current_context = [{
+          "role": "user",
+          "content": user_query
+        }]
+
     prompt = [
         {
          "role": "developer", 
@@ -20,13 +28,14 @@ async def get_response(aiohttp_session, user_query, user_session):
         "model": config('OPENAI_MODEL'),
         "messages": prompt,
         "max_tokens": 70,
-        "temperature": 0.5
+        "temperature": 0.6
     }
     try:
         async with aiohttp_session.post(config('OPENAI_API_ENDPOINT'), json=payload, headers=headers) as response:
             response_json = await response.json()
             reply = response_json.get("choices", [{}])[0].get("message", {}).get("content", "There appears to be an error. Please try again later.")
-            await conversation_context.update_conversation_context(key=user_session, role="assistant", msg=reply)
+            if not no_context:
+                await conversation_context.update_conversation_context(key=user_session, role="assistant", msg=reply)
             return reply
     except Exception as e:
         print("OpenAI API error:", e)
