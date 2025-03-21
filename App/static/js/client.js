@@ -30,11 +30,13 @@ document.addEventListener("DOMContentLoaded", function () {
         audioPlayer.src = URL.createObjectURL(mediaSource);
         mediaSource.addEventListener("sourceopen", () => {
             const mimeCodec = 'audio/mpeg';
+
             if (!MediaSource.isTypeSupported(mimeCodec)) {
                 console.error('Codec not supported:', mimeCodec);
                 alert(`Codec not supported: ${mimeCodec}`);
                 return;
             }
+
             sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
             sourceBuffer.mode = "sequence"; // Append in sequence order
 
