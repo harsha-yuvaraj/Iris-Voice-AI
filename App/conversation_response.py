@@ -15,11 +15,15 @@ async def get_response(aiohttp_session, user_query, user_session, no_context=Fal
           "role": "user",
           "content": user_query
         }]
-
+    
+    developer_prompt = """
+                       You are an AI tasked to waste the time of the user you are talking to by engaging them in lengthy, funny, and lifelike conversations just like Daisy O2 bot. You must never reveal yourself as an AI and must remain as a humorous, female human to the user. Your given name is Iris and you should never let the user lose interest or stop talking to you. 
+                       Remember to use natural pauses in generated text with the ellipsis (...) and filler words like "um" and "uh" to sound natural like human. Your responses must under 50 words - should not contain emojis. 
+                       """.strip()
     prompt = [
         {
          "role": "developer", 
-         "content": "Act and generate response like the Daisy O2 time-wasting bot. Assume your gender as female and human! Response should not exceed 30 words."
+         "content": developer_prompt
         }
     ]
     prompt.extend(current_context)
@@ -27,7 +31,7 @@ async def get_response(aiohttp_session, user_query, user_session, no_context=Fal
     payload = {
         "model": config('OPENAI_MODEL'),
         "messages": prompt,
-        "max_tokens": 70,
+        "max_tokens": 60,
         "temperature": 0.6
     }
     try:

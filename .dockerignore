@@ -47,3 +47,6 @@ docker-ecr-deploy.ps1
 
 # Igonre staticfiles folder
 staticfiles/
+
+# Igonre local testing file
+testing.py
