@@ -7,7 +7,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const chunkQueue = [];
     let isAppending = false;
     let receivedFinal = false; // Flag to check final command received
+    let audioConsentAppleUsers = false;
     let listen = true;
+    const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) && !window.MSStream;
 
     const protocol = (window.location.protocol === "https:") ? "wss://" : "ws://";
     const wsUrl = `${protocol}${window.location.host}/ws/voice/`;
@@ -22,8 +24,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     socket.onopen = function () {
         console.log("WebSocket connection established.");
-        // Initialize MediaSource on connection open
-        initMediaSource();
+        
+        if (!isAppleDevice) {
+             // Initialize MediaSource on connection open
+             initMediaSource();
+        }
     };
 
     // Initialize MediaSource and setup SourceBuffer
@@ -126,6 +131,7 @@ document.addEventListener("DOMContentLoaded", function () {
     socket.onerror = function (error) {
         console.error("WebSocket error:", error);
         alert("Reload the page! Connection issue.")
+        window.location.reload(true);
     };
 
     // Reset MediaSource for a fresh stream
@@ -184,6 +190,10 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     voiceButton.addEventListener("click", function () {
+        if(isAppleDevice && !audioConsentAppleUsers){
+            initMediaSource();
+            audioConsentAppleUsers = true;
+        }
         if (listen) {
           if (!isRecording) {
              startRecording();
