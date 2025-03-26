@@ -6,7 +6,7 @@
 ### **Talk to Iris**: Call +1 956-952-7270
 
 ## Update
-
+Currently, there is an issue preventing users from accessing Iris via web browsers in latest iOS & macOS. 
 New features are being developed — including enhanced speech detection & response generation along with UI improvements.
 
 ## Features
