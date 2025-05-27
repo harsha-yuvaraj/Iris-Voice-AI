@@ -2,6 +2,7 @@
 
 **A voice-to-voice AI** built with **Django**, **Deepgram**, **OpenAI** and integrated with **Twilio**. Iris is designed to deliver a fun and engaging conversational experience with smart time wasting.
 
+## Status: <color style="color: red">Offline </color>
 ### **Check out the project live**: [irisvoiceai.tech](https://irisvoiceai.tech)
 ### **Talk to Iris**: Call +1 956-952-7270
 
