@@ -6,10 +6,6 @@
 ### **Check out the project live**: [irisvoiceai.tech](https://irisvoiceai.tech)
 ### **Talk to Iris**: Call +1 956-952-7270
 
-# Update
-
-Iris is currently down for upgrades — enhanced speech detection & response generation along with UI improvements. 
-
 ## Features
 
 - **Real-Time Voice Interaction**:  
